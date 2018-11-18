@@ -1,5 +1,5 @@
 <template>
-  <div ref="dom" style="position: relative"></div>
+  <div ref="dom" style="position: relative;width: 310px; height: 200px;"></div>
 </template>
 
 <script>
