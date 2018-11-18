@@ -1,6 +1,13 @@
 const l = 42, r = 10, w = 310, h = 155, PI = Math.PI
 const L = l + r * 2
 
+/**
+ * @description 基于 http://www.jq22.com/jquery-info19009
+ * 优化了使用方式，支持服务端渲染
+ * 解决了滑块移动过程中出现抖动的bug
+ * TODO 支持touch事件
+ * TODO loading
+ */
 class Jigsaw {
 
   constructor(el, opts) {
