@@ -176,12 +176,20 @@ class Jigsaw {
       const moveX = e.x - originX
       const moveY = e.y - originY
       if (moveX < 0 || moveX + 38 >= w) return false
-      this.slider.style.left = moveX + 'px'
-      var blockLeft = (w - 40 - 20) / (w - 40) * moveX
-      this.block.style.left = blockLeft + 'px'
+      // 计算滑块移动的位置
+      let x = moveX > w - 40 ?  w - 40 : moveX
+      let overflow = false
+      if (x >= w - 40) overflow = true
+      // 溢出判断
+      this.slider.style.left = x + 'px'
       this.addClass(this.sliderContainer, 'sliderContainer_active')
-      this.sliderMask.style.width = moveX + 'px'
+      this.sliderMask.style.width = (x + 1) + 'px' // border-box
       trail.push(moveY)
+      if (overflow) return
+      // 计算小缺块的移动位置
+      var blockLeft = (w - 40 - 20) / (w - 40) * moveX
+      // let blockLeft = moveX
+      this.block.style.left = blockLeft + 'px'
     })
     document.addEventListener('mouseup', (e) => {
       if (!isMouseDown) return false
@@ -220,7 +228,7 @@ class Jigsaw {
     return {spliced: Math.abs(left - this.x) < 10, TuringTest: average !== stddev,}
   }
 
-  reset() {
+  reset () {
     this.sliderContainer.className = 'sliderContainer'
     this.slider.style.left = 0
     this.block.style.left = 0
