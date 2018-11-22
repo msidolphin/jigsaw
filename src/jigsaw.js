@@ -16,7 +16,7 @@ class Jigsaw {
       fail: null,
       autoInit: true
     }
-    this.opts = Object.assign({}, this.defaultOpts, this.opts)
+    this.opts = Object.assign({}, this.defaultOpts, opts)
     this.el = el
     this.success = this.opts.success
     this.fail = this.opts.fail
