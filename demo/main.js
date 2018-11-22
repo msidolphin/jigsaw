@@ -1,6 +1,6 @@
 import Vue from 'vue'
 import App from './App.vue'
-import '../src/jigsaw.css'
+import '../dist/index.css'
 
 const app = new Vue({
   el: '#app',

@@ -3,7 +3,7 @@
 </template>
 
 <script>
-import Jigsaw from '@/jigsaw'
+import Jigsaw from '../dist/jigsaw.min.js'
 export default {
   mounted () {
     this.jigsaw = new Jigsaw(this.$refs.dom)
