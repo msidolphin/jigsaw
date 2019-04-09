@@ -5,8 +5,9 @@ const L = l + r * 2
  * @description 基于 http://www.jq22.com/jquery-info19009 滑动验证
  * 优化了使用方式，支持服务端渲染
  * 解决了滑块移动过程中出现抖动的bug
- * TODO 支持touch事件
  * TODO loading
+ * TODO 用户自定义远程地址
+ * TODO 用户自定义图片列表
  */
 class Jigsaw {
 
@@ -21,6 +22,12 @@ class Jigsaw {
     this.success = this.opts.success
     this.fail = this.opts.fail
     this.isSuccess = false
+    this.isStart = false
+    this.originX = 0
+    this.originY = 0
+    this.pageX = 0
+    this.pageY = 0
+    this.trail = []
     if (this.opts.autoInit) {
       this.initDOM()
       this.initImg()
@@ -168,45 +175,44 @@ class Jigsaw {
     this.block.width = w
   }
 
-  bindEvents() {
-    this.el.onselectstart = () => false
-    this.refreshIcon.onclick = () => {
-      this.reset()
-    }
-    let originX, originY, trail = [], isMouseDown = false
-    this.slider.addEventListener('mousedown', function (e) {
-      originX = e.x, originY = e.y
-      isMouseDown = true
-    })
-    document.addEventListener('mousemove', (e) => {
-      if (!isMouseDown || this.isSuccess) return false
-      const moveX = e.x - originX
-      const moveY = e.y - originY
-      if (moveX < 0 || moveX + 38 >= w) return false
-      // 计算滑块移动的位置
-      let x = moveX > w - 40 ?  w - 40 : moveX
-      let overflow = false
-      if (x >= w - 40) overflow = true
-      // 溢出判断
-      this.slider.style.left = x + 'px'
-      this.addClass(this.sliderContainer, 'sliderContainer_active')
-      this.sliderMask.style.width = (x + 1) + 'px' // border-box
-      trail.push(moveY)
-      if (overflow) return
-      // 计算小缺块的移动位置
-      var blockLeft = (w - 40 - 20) / (w - 40) * moveX
-      // let blockLeft = moveX
-      this.block.style.left = blockLeft + 'px'
-    })
-    document.addEventListener('mouseup', (e) => {
-      if (!isMouseDown) return false
-      isMouseDown = false
-      if (e.x == originX) return false
+  handleStart (e) {
+    this.originX = e.x
+    this.originY = e.y
+    this.isStart = true
+  }
+
+  handleMove (e) {
+    if (!this.isStart || this.isSuccess) return false
+    this.pageX = e.x
+    this.pageY = e.y
+    const moveX = this.pageX - this.originX
+    const moveY = this.pageY - this.originY
+    if (moveX < 0 || moveX + 38 >= w) return false
+    // 计算滑块移动的位置
+    let x = moveX > w - 40 ?  w - 40 : moveX
+    let overflow = false
+    // 溢出判断
+    if (x >= w - 40) overflow = true
+    this.slider.style.left = x + 'px'
+    this.addClass(this.sliderContainer, 'sliderContainer_active')
+    this.sliderMask.style.width = (x + 1) + 'px' // border-box
+    this.trail.push(moveY)
+    if (overflow) return
+    // 计算小缺块的移动位置
+    var blockLeft = (w - 40 - 20) / (w - 40) * moveX
+    // let blockLeft = moveX
+    this.block.style.left = blockLeft + 'px'
+  }
+
+  handleEnd (e) {
+    if (!this.isStart) return false
+      this.isStart = false
+      if (e.x == this.originX) return false
+      this.pageX = e.x
       this.removeClass(this.sliderContainer, 'sliderContainer_active')
-      this.trail = trail
-      const {spliced, TuringTest} = this.verify()
+      const {spliced, pass} = this.verify()
       if (spliced) {
-        if (TuringTest) {
+        if (pass) {
           this.addClass(this.sliderContainer, 'sliderContainer_success')
           this.isSuccess = true
           this.el.removeChild(this.refreshIcon)
@@ -223,7 +229,54 @@ class Jigsaw {
           this.reset()
         }, 1000)
       }
-    })
+  }
+
+  getTouchEvent (e) {
+    if (e.touches && e.touches.length) {
+      return {
+        x: e.touches[0].pageX,
+        y: e.touches[0].pageY
+      }
+    } else {
+      return false
+    }
+  }
+
+  bindEvents() {
+    this.handleStart = this.handleStart.bind(this)
+    this.handleMove = this.handleMove.bind(this)
+    this.handleEnd = this.handleEnd.bind(this)
+    this.handleStart4Touch = e => {
+      e.stopPropagation()
+      e.preventDefault()
+      let evt = this.getTouchEvent(e)
+      if (evt) this.handleStart(evt)
+    }
+    this.handleMove4Touch = e => {
+      e.stopPropagation()
+      e.preventDefault()
+      let evt = this.getTouchEvent(e)
+      if (evt) this.handleMove(evt)
+    }
+    this.handleEnd4Touch = e => {
+      e.stopPropagation()
+      e.preventDefault()
+      this.handleEnd({
+        x: this.pageX,
+        y: this.pageY
+      })
+    }
+
+    this.el.onselectstart = () => false
+    this.refreshIcon.onclick = () => {
+      this.reset()
+    }
+    this.slider.addEventListener('mousedown', this.handleStart)
+    this.slider.addEventListener('mousemove', this.handleMove)
+    this.slider.addEventListener('mouseup', this.handleEnd)
+    this.slider.addEventListener('touchstart', this.handleStart4Touch)
+    this.slider.addEventListener('touchmove', this.handleMove4Touch)
+    this.slider.addEventListener('touchend', this.handleEnd4Touch)
   }
 
   verify() {
@@ -232,7 +285,7 @@ class Jigsaw {
     const deviations = arr.map(x => x - average)
     const stddev = Math.sqrt(deviations.map(this.square).reduce(this.sum) / arr.length)
     const left = parseInt(this.block.style.left)
-    return {spliced: Math.abs(left - this.x) < 10, TuringTest: average !== stddev,}
+    return {spliced: Math.abs(left - this.x) < 10, pass: average !== stddev,}
   }
 
   reset () {
@@ -241,9 +294,24 @@ class Jigsaw {
     this.block.style.left = 0
     this.sliderMask.style.width = 0
     this.isSuccess = false
+    this.originX = 0
+    this.originY = 0
+    this.pageX = 0
+    this.pageY = 0
+    this.trail = []
     this.clean()
     this.img.src = this.getRandomImg()
     this.draw()
+  }
+
+  destroy () {
+    if (!this.slider || !this.slider.removeEventListener) return
+    this.slider.removeEventListener('mousedown', this.handleStart)
+    this.slider.removeEventListener('mousemove', this.handleMove)
+    this.slider.removeEventListener('mouseup', this.handleEnd)
+    this.slider.removeEventListener('touchstart', this.handleStart4Touch)
+    this.slider.removeEventListener('touchmove', this.handleMove4Touch)
+    this.slider.removeEventListener('touchend', this.handleEnd4Touch)
   }
 }
 
